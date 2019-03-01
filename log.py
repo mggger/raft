@@ -75,17 +75,14 @@ class LogManager:
 
     @property
     def index(self):
-        return len(self.log)
+        return len(self.log) - 1
 
     def term(self, index=None):
-        if index is None:
+        if index is None or index > self.index:
             return self.term(self.index)
 
         elif index == -1:
             return 0
-
-        elif not len(self.log) or index <= self.compacted.index:
-            return self.compacted.term
         else:
             return self[index]['term']
 

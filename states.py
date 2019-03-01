@@ -151,6 +151,7 @@ class Candidate(Follower):
 
     def send_vote_requests(self):
         logging.info('Broadcasting request_vote')
+
         msg = {
             'type': 'request_vote',
             'term': self.persist['currentTerm'],
