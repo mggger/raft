@@ -62,7 +62,7 @@ class LogManager:
         self.log = Log()
         self.state_machine = machine()
 
-        self.commitIndex = len(self.log)
+        self.commitIndex = len(self.log) - 1
         self.state_machine.apply(self, self.commitIndex)
 
     def __getitem__(self, index):
@@ -87,7 +87,7 @@ class LogManager:
             return self[index]['term']
 
     def append_entries(self, entries, prevLogIndex):
-        self.log.append_entries(entries, prevLogIndex)
+        self.log.append_entries(entries, prevLogIndex + 1)
         if entries:
             logger.info(f"Appending new log: {self.log.data}")
 

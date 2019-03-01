@@ -69,7 +69,7 @@ class Follower(State):
         if hasattr(self, 'election_timer'):
             self.election_timer.cancel()
 
-        timeout = randrange(1, 4) * 10 ** -1
+        timeout = randrange(1, 4) * 10 ** 0
         loop = asyncio.get_event_loop()
         self.election_timer = loop.call_later(timeout, self.raft.change_state, Candidate)
         logging.info(f"Election timer restarted: {timeout}")
@@ -219,7 +219,7 @@ class Leader(State):
 
             self.raft.send_peer(peer, msg)
 
-        timeout = randrange(1, 4) * 10 ** -2
+        timeout = randrange(1, 4) * 10 ** -1
         loop = asyncio.get_event_loop()
 
         self.append_timer = loop.call_later(timeout, self.send_append_entries)
