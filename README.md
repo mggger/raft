@@ -1,6 +1,8 @@
 # Quick start
+1. pip3 install -r requirements.txt
 
-启动三个终端
+
+2. 启动三个终端
 ``` shell
 id=5254 python3 main.py
 ```
