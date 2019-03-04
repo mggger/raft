@@ -27,7 +27,6 @@ class State:
                              'address': config.address}
 
             self.log = LogManager()
-            self._update_cluster()
 
     def data_received_peer(self, peer, msg):
 
@@ -49,11 +48,8 @@ class State:
             logging.info(f'[heartbeat]  Unrecognized message from {peer}: {msg}')
 
     def _update_cluster(self, entries=None):
-        for entry in (self.log if entries is None else entries):
-            if entry['data']['key'] == 'cluster':
-                self.volatile['cluster'] = entry['data']['value']
-
-        self.volatile['cluster'] = tuple(map(tuple, self.volatile['cluster']))
+        """ Interface for updating config """
+        pass
 
 
 class Follower(State):
@@ -117,8 +113,6 @@ class Follower(State):
         else:
             logging.warning("Could not append entries. cause: %s", 'wrong term' \
                 if not term_is_current else 'prev log term mismatch')
-
-        self._update_cluster()
 
         resp = {
             'type': 'response_append',
