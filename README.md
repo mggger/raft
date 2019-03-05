@@ -17,4 +17,4 @@
 
 ### 进度
 - [x]  [目标1](https://github.com/mggger/raft/tree/dev1) | [笔记](https://mggger.github.io/2019/03/raft%E7%AC%94%E8%AE%B0-1/)
-- [x]  [目标2](https://github.com/mggger/raft/tree/dev2) | 笔记
+- [x]  [目标2](https://github.com/mggger/raft/tree/dev2) | [笔记](https://mggger.github.io/2019/03/raft%E7%AC%94%E8%AE%B0-2/)
