@@ -27,12 +27,13 @@ class State:
                              'address': config.address}
 
             self.log = LogManager()
+            self._update_cluster()
 
     def data_received_peer(self, peer, msg):
 
         logger.info('Received %s from %s', msg['type'], peer)
 
-        if self.persist['currentTerm'] < msg['term']:
+        if self.persist['currentTerm'] < msg['term'] and peer in self.volatile['cluster']:
             self.persist['currentTerm'] = msg['term']
             if not type(self) is Follower:
                 logging.info('Remote term is higher converting to Follower')
@@ -47,9 +48,31 @@ class State:
         else:
             logging.info(f'[heartbeat]  Unrecognized message from {peer}: {msg}')
 
+    def data_received_client(self, protocol, msg):
+        method = getattr(self, 'on_client_' + msg['type'], None)
+        if method:
+            method(protocol, msg)
+        else:
+            logger.info("Unrecognized message from %s: %s",
+                        protocol.transport.get_extra_info('peername'), msg)
+
+    def on_client_append(self, protocol, msg):
+        """ 指定client发送消息给leader """
+        msg = {'type': 'redirect',
+               'leader': self.volatile['leaderId'] if 'leaderId' in self.volatile.keys() else None}
+        protocol.send(msg)
+        logger.info("Redirect msg to %s, from: %s", self.volatile['leaderId'], self.volatile['address'])
+
+    def on_client_config(self, protocol, msg):
+        return self.on_client_append(protocol, msg)
+
     def _update_cluster(self, entries=None):
         """ Interface for updating config """
-        pass
+        for entry in (self.log if entries is None else entries):
+            if entry['data']['key'] == 'cluster':
+                self.volatile['cluster'] = entry['data']['value']
+
+        self.volatile['cluster'] = tuple(map(tuple, self.volatile['cluster']))
 
 
 class Follower(State):
@@ -113,6 +136,8 @@ class Follower(State):
         else:
             logging.warning("Could not append entries. cause: %s", 'wrong term' \
                 if not term_is_current else 'prev log term mismatch')
+
+        self._update_cluster()
 
         resp = {
             'type': 'response_append',
@@ -230,3 +255,49 @@ class Leader(State):
             self.log.commit(index)
         else:
             self.nextIndex[peer] = max(0, self.nextIndex[peer] - 1)
+
+    def on_client_config(self, protocol, msg):
+        """ Push new cluster config. When uncommitted cluster changes
+       are already present, retries until they are committed
+       before proceding."""
+
+        pending_configs = tuple(filter(lambda x: x['data']['key'] == 'cluster',
+                                       self.log[self.log.commitIndex + 1:]
+                                       ))
+
+        if pending_configs:
+            timeout = randrange(1, 4) * 10 ** -1
+            loop = asyncio.get_event_loop()
+            loop.call_later(timeout, self.on_client_append, msg)
+            return
+
+        success = True
+
+        cluster = set(self.volatile['cluster'])
+        peer = (msg['address'], int(msg['port']))
+
+        if msg['action'] == 'add' and peer not in cluster:
+            logger.info('adding node %s', peer)
+            cluster.add(peer)
+            self.nextIndex[peer] = 0
+            self.matchIndex[peer] = 0
+
+        elif msg['action'] == 'delete' and peer in cluster:
+            logger.info(f'Removing node {peer}')
+            cluster.remove(peer)
+
+            del self.nextIndex[peer]
+            del self.matchIndex[peer]
+
+        else:
+            success = False
+
+        if success:
+            self.log.append_entries(
+                [{'term': self.persist['currentTerm'],
+                  'data': {'key': 'cluster', 'value': tuple(cluster), 'action': 'change'}
+                  }],
+                self.log.index
+            )
+            self.volatile['cluster'] = cluster
+        protocol.send({'type': 'result', 'success': success})

@@ -1,5 +1,5 @@
 import asyncio
-from protocols import Raft, PeerProtocol
+from protocols import Raft, PeerProtocol, ClientProtocol
 from config import config
 from logging.config import dictConfig
 
@@ -36,6 +36,10 @@ def main():
                                          local_addr=tuple(config.address))
     transport, _ = loop.run_until_complete(coro)
     raft.peer_transport = transport
+
+    coro = loop.create_server(lambda: ClientProtocol(raft), *config.address)
+
+    loop.run_until_complete(coro)
     loop.run_forever()
 
 

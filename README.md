@@ -14,3 +14,8 @@ id=5255 python3 main.py
 ``` shell
 id=5256 python3 main.py
 ```
+
+3. 删除一个节点
+``` shell
+id=5256 python3 client.py 
+```
