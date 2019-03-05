@@ -1,7 +1,6 @@
 import asyncio
 import msgpack
 import os
-from utils import extended_msgpack_serializer
 
 
 class ConfigClient(asyncio.Protocol):
@@ -12,7 +11,7 @@ class ConfigClient(asyncio.Protocol):
         self.on_con_lost = on_con_lost
 
     def connection_made(self, transport):
-        transport.write(msgpack.packb(self.message, use_bin_type=True, default=extended_msgpack_serializer))
+        transport.write(msgpack.packb(self.message, use_bin_type=True))
 
     def data_received(self, data):
         msg = msgpack.unpackb(data, encoding="utf-8")

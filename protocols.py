@@ -4,7 +4,6 @@ import msgpack
 import os
 from states import Follower
 from config import config
-from utils import extended_msgpack_serializer
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +25,7 @@ class Raft:
         self.state.data_received_client(transport, message)
 
     def send(self, transport, message):
-        transport.sendto(msgpack.packb(message, use_bin_type=True, default=extended_msgpack_serializer))
+        transport.sendto(msgpack.packb(message, use_bin_type=True))
 
     def send_peer(self, recipient, message):
         if recipient != self.state.volatile['address']:
@@ -76,5 +75,5 @@ class ClientProtocol(asyncio.Protocol):
         logger.info(f'close connection with client %s:%s', *self.transport.get_extra_info('peername'))
 
     def send(self, message):
-        self.transport.write(msgpack.packb(message, use_bin_type=True, default=extended_msgpack_serializer))
+        self.transport.write(msgpack.packb(message, use_bin_type=True))
         self.transport.close()

@@ -70,12 +70,3 @@ def msgpack_appendable_unpack(path):
         f.seek(MAX_MSGPACK_ARRAY_HEADER_LEN)
 
         return [unpacker.unpack() for _ in range(length)]
-
-
-def extended_msgpack_serializer(obj):
-    if isinstance(obj, collections.deque):
-        serial = list(obj)
-        return serial
-
-    else:
-        raise TypeError("Type not serializable")
