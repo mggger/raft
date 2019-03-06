@@ -68,6 +68,9 @@ class State:
 
     def _update_cluster(self, entries=None):
         """ Interface for updating config """
+        if 'cluster' in self.log.compacted.data:
+            self.volatile['cluster'] = self.log.compacted.data['cluster']
+
         for entry in (self.log if entries is None else entries):
             if entry['data']['key'] == 'cluster':
                 self.volatile['cluster'] = entry['data']['value']
@@ -126,7 +129,15 @@ class Follower(State):
         if term_is_current:
             self.restart_election_timer()
 
-        if success:
+        if 'compact_data' in msg:
+            self.log = LogManager(compact_count=msg['compact_count'],
+                                  compact_term=msg['compact_term'],
+                                  compact_data=msg['compact_data'])
+
+            self.volatile['leaderId'] = msg['leaderId']
+            logger.info('Initialized Log with compact data from leader')
+
+        elif success:
             self.log.append_entries(msg['entries'], msg['prevLogIndex'])
             self.log.commit(msg['leaderCommit'])
             self.volatile['leaderId'] = msg['leaderId']
@@ -219,6 +230,9 @@ class Leader(State):
     def teardown(self):
         self.append_timer.cancel()
 
+        if hasattr(self, 'config_timer'):
+            self.config_timer.cancel()
+
     def send_append_entries(self):
         for peer in self.volatile['cluster']:
             if peer == self.volatile['address']:
@@ -232,6 +246,11 @@ class Leader(State):
                    'entries': self.log[self.nextIndex[peer]: self.nextIndex[peer] + 100]}
 
             msg.update({'prevLogTerm': self.log.term(msg['prevLogIndex'])})
+
+            if self.nextIndex[peer] <= self.log.compacted:
+                msg.update({"compact_data": self.log.compacted.data})
+                msg.update({"compact_term": self.log.compacted.term})
+                msg.update({"compact_count": self.log.compacted.count})
 
             logging.info('Sending %s entries to %s. Start index %s', len(msg['entries']), peer,
                          self.nextIndex[peer])
@@ -268,7 +287,7 @@ class Leader(State):
         if pending_configs:
             timeout = randrange(1, 4) * 10 ** -1
             loop = asyncio.get_event_loop()
-            loop.call_later(timeout, self.on_client_append, msg)
+            self.config_timer = loop.call_later(timeout, self.on_client_append, msg)
             return
 
         success = True
