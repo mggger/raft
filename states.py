@@ -66,6 +66,10 @@ class State:
     def on_client_config(self, protocol, msg):
         return self.on_client_append(protocol, msg)
 
+    def on_client_get(self, protocol, msg):
+        state_machine = self.log.state_machine.data.copy()
+        protocol.send(state_machine)
+
     def _update_cluster(self, entries=None):
         """ Interface for updating config """
         if 'cluster' in self.log.compacted.data:
@@ -213,6 +217,8 @@ class Leader(State):
         self.matchIndex = {p: 0 for p in self.volatile['cluster']}
 
         self.nextIndex = {p: self.log.commitIndex + 1 for p in self.matchIndex}
+        self.waiting_clients = {}
+
         self.send_append_entries()
 
         if 'cluster' not in self.log.state_machine:
@@ -247,7 +253,7 @@ class Leader(State):
 
             msg.update({'prevLogTerm': self.log.term(msg['prevLogIndex'])})
 
-            if self.nextIndex[peer] <= self.log.compacted:
+            if self.nextIndex[peer] <= self.log.compacted.index:
                 msg.update({"compact_data": self.log.compacted.data})
                 msg.update({"compact_term": self.log.compacted.term})
                 msg.update({"compact_count": self.log.compacted.count})
@@ -272,6 +278,7 @@ class Leader(State):
 
             index = statistics.median_low(self.matchIndex.values())
             self.log.commit(index)
+            self.send_client_append_response()
         else:
             self.nextIndex[peer] = max(0, self.nextIndex[peer] - 1)
 
@@ -320,3 +327,35 @@ class Leader(State):
             )
             self.volatile['cluster'] = cluster
         protocol.send({'type': 'result', 'success': success})
+
+    def on_client_append(self, protocol, msg):
+        entry = {'term': self.persist['currentTerm'], 'data': msg['data']}
+
+        if msg['data']['key'] == 'cluster':
+            protocol.send({'type': 'result', 'success': False})
+            return
+
+        self.log.append_entries([entry], self.log.index)
+        if self.log.index in self.waiting_clients:
+            self.waiting_clients[self.log.index].append(protocol)
+        else:
+            self.waiting_clients[self.log.index] = [protocol]
+
+        self.on_peer_response_append(
+            self.volatile['address'], {'success': True, 'matchIndex': self.log.commitIndex}
+        )
+
+    def send_client_append_response(self):
+
+        to_delete = []
+        for client_index, clients in self.waiting_clients.items():
+
+            if client_index <= self.log.commitIndex:
+                for client in clients:
+                    client.send({'type': 'result', 'success': True})
+                    logger.info("Sent successful response to client")
+
+                to_delete.append(client_index)
+
+        for index in to_delete:
+            del self.waiting_clients[index]

@@ -15,7 +15,7 @@ id=5255 python3 main.py
 id=5256 python3 main.py
 ```
 
-3. 删除一个节点
+3. 新增60个{key: value}, 观察压缩
 ``` shell
-id=5256 python3 client.py 
+python3 client.py 
 ```

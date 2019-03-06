@@ -73,7 +73,7 @@ class Compactor():
 
         elif os.path.isfile(self.path):
             with open(self.path, 'rb') as f:
-                self.__dict__.update(msgpack.unpack(f, encoding='uft-8'))
+                self.__dict__.update(msgpack.unpack(f, encoding='utf-8'))
                 logger.info("Using persisted data")
 
     @property

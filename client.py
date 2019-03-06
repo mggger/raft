@@ -1,6 +1,5 @@
 import asyncio
 import msgpack
-import os
 
 
 class ConfigClient(asyncio.Protocol):
@@ -32,25 +31,31 @@ class ConfigClient(asyncio.Protocol):
         self.on_con_lost.set_result(self.reply)
 
 
-def _make_up_msg(address: tuple, action):
+def _make_up_msg(key):
     msg = {
-        "type": "config",
-        "address": address[0],
-        "port": int(address[1]),
-        "action": action
-    }
+        "type": "append",
+        "data": {
+            "action": "change",
+            "key": key,
+            "value": 1
+        }}
     return msg
 
 
-async def main():
-    address = ("127.0.0.1", 5256)
-    message = _make_up_msg(address, "delete")
+async def send(address, key, value):
+    msg = {
+        "type": "append",
+        "data": {
+            "action": "change",
+            "key": key,
+            "value": value
+        }}
 
     loop = asyncio.get_event_loop()
     on_con_lost = loop.create_future()
 
-    transport, protocol = await loop.create_connection(lambda: ConfigClient(message, on_con_lost, loop), "127.0.0.1",
-                                                       int(os.getenv("id", 0)))
+    transport, protocol = await loop.create_connection(lambda: ConfigClient(msg, on_con_lost, loop), address[0],
+                                                       int(address[1]))
 
     reply = await on_con_lost
     transport.close()
@@ -60,13 +65,18 @@ async def main():
         address, port = reply['leader']
 
         re_futrue = loop.create_future()
-        transport, protocol = await loop.create_connection(lambda: ConfigClient(message, re_futrue, loop), address,
-                                                           int(port))
+        transport, protocol = await loop.create_connection(lambda: ConfigClient(msg, on_con_lost, loop), address[0],
+                                                           int(address[1]))
 
         reply = await re_futrue
         transport.close()
 
     print("config_update: ", reply['success'])
+
+
+async def main():
+    for i in range(60):
+        await send(("127.0.0.1", 5254), f"key_{i}", i + 1)
 
 
 asyncio.run(main())
