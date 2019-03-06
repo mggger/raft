@@ -219,6 +219,9 @@ class Leader(State):
     def teardown(self):
         self.append_timer.cancel()
 
+        if hasattr(self, 'config_timer'):
+            self.config_timer.cancel()
+
     def send_append_entries(self):
         for peer in self.volatile['cluster']:
             if peer == self.volatile['address']:
@@ -268,7 +271,7 @@ class Leader(State):
         if pending_configs:
             timeout = randrange(1, 4) * 10 ** -1
             loop = asyncio.get_event_loop()
-            loop.call_later(timeout, self.on_client_append, msg)
+            self.config_timer = loop.call_later(timeout, self.on_client_append, msg)
             return
 
         success = True
