@@ -19,3 +19,25 @@
 - [x]  [目标1](https://github.com/mggger/raft/tree/dev1) | [笔记](https://mggger.github.io/2019/03/raft%E7%AC%94%E8%AE%B0-1/)
 - [x]  [目标2](https://github.com/mggger/raft/tree/dev2) | [笔记](https://mggger.github.io/2019/03/raft%E7%AC%94%E8%AE%B0-2/)
 - [x]  [目标3](https://github.com/mggger/raft/tree/dev3) | [笔记](https://mggger.github.io/2019/03/raft%E7%AC%94%E8%AE%B0-3/)
+
+#### quick start
+启动服务
+```shell 
+id=5254 python3 main.py
+id=5255 python3 main.py
+id=5256 python3 main.py 
+```
+
+当前目录运行python3 
+``` shell
+Python 3.7.0 (v3.7.0:1bf9cc5093, Jun 26 2018, 23:26:24)
+[Clang 6.0 (clang-600.0.57)] on darwin
+Type "help", "copyright", "credits" or "license" for more information.
+>>> from client import DistributeDict
+>>> d = DistributeDict("127.0.0.1", 5254)
+>>> d1 = DistributeDict("127.0.0.1", 5255)
+>>> d['test'] = 'yes'
+>>> d1['test']
+'yes'
+>>> 
+```
