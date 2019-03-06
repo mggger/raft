@@ -2,7 +2,7 @@ import asyncio
 import msgpack
 
 
-class ConfigClient(asyncio.Protocol):
+class Client(asyncio.Protocol):
 
     def __init__(self, message, on_con_lost, loop):
         self.message = message
@@ -54,7 +54,7 @@ async def send(address, key, value):
     loop = asyncio.get_event_loop()
     on_con_lost = loop.create_future()
 
-    transport, protocol = await loop.create_connection(lambda: ConfigClient(msg, on_con_lost, loop), address[0],
+    transport, protocol = await loop.create_connection(lambda: Client(msg, on_con_lost, loop), address[0],
                                                        int(address[1]))
 
     reply = await on_con_lost
@@ -65,7 +65,7 @@ async def send(address, key, value):
         address, port = reply['leader']
 
         re_futrue = loop.create_future()
-        transport, protocol = await loop.create_connection(lambda: ConfigClient(msg, on_con_lost, loop), address[0],
+        transport, protocol = await loop.create_connection(lambda: Client(msg, on_con_lost, loop), address[0],
                                                            int(address[1]))
 
         reply = await re_futrue
