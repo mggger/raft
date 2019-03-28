@@ -67,8 +67,7 @@ class State:
         return self.on_client_append(protocol, msg)
 
     def on_client_get(self, protocol, msg):
-        state_machine = self.log.state_machine.data.copy()
-        protocol.send(state_machine)
+        return self.on_client_append(protocol, msg)
 
     def _update_cluster(self, entries=None):
         """ Interface for updating config """
@@ -344,6 +343,10 @@ class Leader(State):
         self.on_peer_response_append(
             self.volatile['address'], {'success': True, 'matchIndex': self.log.commitIndex}
         )
+
+    def on_client_get(self, protocol, msg):
+        state_machine = self.log.state_machine.data.copy()
+        protocol.send(state_machine)
 
     def send_client_append_response(self):
 
